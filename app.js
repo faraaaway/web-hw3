@@ -102,6 +102,12 @@ console.log(
 const yearsSince = (dateStr) =>
   new Date().getFullYear() - new Date(dateStr).getFullYear();
 
+// 찜한 제목 배열을 브라우저에 저장하고 불러오기(교재에 없는 문법: localStorage, JSON)
+const liked = JSON.parse(localStorage.getItem("liked") || "[]");
+function saveLiked() {
+  localStorage.setItem("liked", JSON.stringify(liked));
+}
+
 // renderCards : 영화 배열 ⇒ 보드에 카드 생성(반환값 없음)
 function renderCards(list) {
   const board = document.querySelector(".board");
@@ -132,7 +138,7 @@ function renderCards(list) {
       <div class="info">        
         <h3>${m.title}</h3>        
         <p class="year">${m.year}</p>   
-        <button class="like" type="button">♥</button>   
+        <button class="${liked.includes(m.title) ? "like liked" : "like"}" type="button">♥</button>   
       </div>`;
     } else {
       card.innerHTML =
@@ -142,16 +148,14 @@ function renderCards(list) {
       <div class="info">        
         <h3>${m.title}</h3>        
         <p class="year">${m.year}</p>   
-        <button class="like" type="button">♥</button>   
+        <button class="${liked.includes(m.title) ? "like liked" : "like"}" type="button">♥</button>   
       </div>`;
     }
-    // card.onclick = function () {
-    //   alert(m.overview);
-    // };
+
     board.appendChild(card);
   }
-  document.getElementById("count").textContent = list.length + "편";
-  updateLikeCount();
+  document.getElementById("count").textContent = list.length + "편"; //영화 몇편인지
+  document.getElementById("likeCount").textContent = liked.length; //like 개수 표시
   if (list.length === 0) {
     board.classList.add("is-empty");
   } else {
@@ -163,11 +167,6 @@ const boxTop = {
   title: "극장판 치이카와: 인어 섬의 비밀",
   audience: 1875606,
 };
-
-// 검색창 : 글자를 칠 때마다 제목으로 걸러서 다시 그리기
-document.getElementById("q").addEventListener("input", (e) => {
-  renderCards(getView());
-});
 
 // getView : 없음 ⇒ 검색어로 거른 뒤 선택 상자 기준으로 정렬한 새 배열
 function getView() {
@@ -190,29 +189,49 @@ function getView() {
   return sortBy(found, key, key !== "title");
 }
 
-//화살표 함수의 경우
-// this: Window {window: Window, self: Window, document: document, name: '', location: Location, …}
-// e.target: <img class="poster" src="https://image.tmdb.org/t/p/w342/gDN2NWtHbs8ZWEBQM8Dh5OVXdb4.jpg" alt="인터스텔라 포스터"></img>
-// 일반 함수의 경우
-// this: <section class="board" id="board">…</section>grid
-// e.target: <img class="poster" src="https://image.tmdb.org/t/p/w342/u2oRQqUashBBIj5UNeOd5TN0bmB.jpg" alt="1917 포스터">
+function openDetail(title) {
+  const found = movies.find((m) => m.title === title);
+  if (!found) return;
+
+  const dialog = document.getElementById("detail");
+  const detailBody = document.getElementById("detailBody");
+  const closeDetail = document.getElementById("closeDetail");
+
+  detailBody.innerHTML = `<img class="poster" src="${posterUrl(found.poster, "w342")}" alt="${found.title} 포스터">`;
+
+  closeDetail.addEventListener("click", (e) => {
+    dialog.close(); // 닫기 : Esc 키를 눌러도 닫힙니다
+  });
+
+  dialog.showModal(); // 열기 : 화면 가운데에 뜨고 뒤쪽은 어두워집니다
+}
+
 document.querySelector(".board").addEventListener("click", function (e) {
-  if (e.target.classList.contains("like")) {
-    e.target.classList.toggle("liked");
-    updateLikeCount();
+  const card = e.target.closest(".card");
+  if (card === null) return;
+
+  const title = card.getAttribute("data-title");
+  if (e.target.closest(".like")) {
+    //찜 토글
+    const i = liked.indexOf(title);
+    if (i === -1) liked.push(title);
+    else {
+      liked.splice(i, 1);
+    }
+    saveLiked();
+    refresh();
+
+    //e.target.classList.toggle("liked");
+    return;
+  } else {
+    openDetail(title);
   }
 });
 
-// 찜한 제목 배열을 브라우저에 저장하고 불러오기(교재에 없는 문법: localStorage, JSON)
-const liked = JSON.parse(localStorage.getItem("liked") || "[]");
-function saveLiked() {
-  localStorage.setItem("liked", JSON.stringify(liked));
-}
-
-function updateLikeCount() {
-  document.getElementById("likeCount").textContent =
-    document.querySelectorAll(".liked").length;
-}
+// function updateLikeCount() {
+//   document.getElementById("likeCount").textContent =
+//     document.querySelectorAll(".liked").length;
+// }
 
 function refresh() {
   renderCards(getView());
@@ -222,11 +241,18 @@ refresh();
 document.getElementById("q").addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     e.target.value = "";
-    refresh();
   }
+  refresh();
+});
+//검색창
+
+document.getElementById("q").addEventListener("input", (e) => {
+  refresh();
 });
 
+//분류(최신 개봉순 등)
 document.getElementById("sort").addEventListener("change", refresh);
+//타입(내 영화, 박스오피스)
 document.getElementById("typeFilter").addEventListener("change", refresh);
 
 document.querySelector("#themeToggle").addEventListener("click", function (e) {
