@@ -172,8 +172,15 @@ document.getElementById("q").addEventListener("input", (e) => {
 // getView : 없음 ⇒ 검색어로 거른 뒤 선택 상자 기준으로 정렬한 새 배열
 function getView() {
   const keyword = document.getElementById("q").value.trim().toLowerCase();
-  const found = movies.filter((m) => m.title.toLowerCase().includes(keyword));
+
   const key = document.getElementById("sort").value;
+  const radioValue = document.querySelector('input[name="type"]:checked').value;
+  const found = movies
+    .filter((m) => m.title.toLowerCase().includes(keyword))
+    .filter((m) => {
+      if (radioValue === "all") return true;
+      else return m.type === radioValue;
+    });
   // return sortBy(found, key, key !== "title");
 
   if (key.slice(0, 3) === "rev") {
@@ -182,8 +189,6 @@ function getView() {
   }
   return sortBy(found, key, key !== "title");
 }
-
-document.getElementById("sort").addEventListener("change", applySort);
 
 //화살표 함수의 경우
 // this: Window {window: Window, self: Window, document: document, name: '', location: Location, …}
@@ -209,13 +214,20 @@ function updateLikeCount() {
     document.querySelectorAll(".liked").length;
 }
 
-renderCards(movies);
+function refresh() {
+  renderCards(getView());
+}
+refresh();
+
 document.getElementById("q").addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     e.target.value = "";
-    renderCards(getView());
+    refresh();
   }
 });
+
+document.getElementById("sort").addEventListener("change", refresh);
+document.getElementById("typeFilter").addEventListener("change", refresh);
 
 document.querySelector("#themeToggle").addEventListener("click", function (e) {
   document.body.classList.toggle("dark");
