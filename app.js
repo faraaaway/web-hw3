@@ -169,24 +169,51 @@ const boxTop = {
 };
 
 // getView : 없음 ⇒ 검색어로 거른 뒤 선택 상자 기준으로 정렬한 새 배열
-function getView() {
+async function getView() {
   const keyword = document.getElementById("q").value.trim().toLowerCase();
+  const TMDBMovies = await searchTMDB(keyword);
+  console.log("데이터", TMDBMovies);
 
   const key = document.getElementById("sort").value;
   const radioValue = document.querySelector('input[name="type"]:checked').value;
-  const found = movies
-    .filter((m) => m.title.toLowerCase().includes(keyword))
-    .filter((m) => {
-      if (radioValue === "all") return true;
-      else return m.type === radioValue;
-    });
-  // return sortBy(found, key, key !== "title");
+  const found = [
+    ...movies,
+    ...TMDBMovies.map((r) => {
+      return {
+        id: r.id,
+        title: r.title,
+        year: Number(r.release_date.slice(0, 4)),
+        date: r.release_date,
+        rating: Math.round(r.vote_average * 10) / 10,
+        poster: r.poster_path,
+        overview: r.overview,
+        type: "tmdb",
+        rank: null,
+      };
+    }),
+  ].filter((m) => {
+    if (radioValue === "all") return true;
+    else return m.type === radioValue;
+  });
 
   if (key.slice(0, 3) === "rev") {
     console.log("rev", key.slice(0, 3));
     return sortBy(found, key.slice(4), key === "rev-title");
   }
   return sortBy(found, key, key !== "title");
+}
+
+// searchTMDB : 검색어 ⇒ TMDB 검색 결과 5건(교재에 없는 문법 fetch, async, await)
+async function searchTMDB(keyword) {
+  const url =
+    "https://api.themoviedb.org/3/search/movie?api_key=" +
+    KEYS.TMDB_KEY +
+    "&language=ko-KR&query=" +
+    encodeURIComponent(keyword);
+  const res = await fetch(url);
+  const data = await res.json();
+
+  return data.results.slice(0, 5);
 }
 
 function openDetail(title) {
@@ -233,8 +260,8 @@ document.querySelector(".board").addEventListener("click", function (e) {
 //     document.querySelectorAll(".liked").length;
 // }
 
-function refresh() {
-  renderCards(getView());
+async function refresh() {
+  renderCards(await getView());
 }
 refresh();
 
@@ -246,9 +273,7 @@ document.getElementById("q").addEventListener("keydown", (e) => {
 });
 //검색창
 
-document.getElementById("q").addEventListener("input", (e) => {
-  refresh();
-});
+document.getElementById("q").addEventListener("input", refresh);
 
 //분류(최신 개봉순 등)
 document.getElementById("sort").addEventListener("change", refresh);
